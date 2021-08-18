@@ -1,0 +1,93 @@
+---
+title: "PLM Assigment"
+author: "Simone Montalbano"
+date: "8/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Data
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+# Libs & data
+
+```{r, cache =T}
+library(ggplot2)
+library(caret)
+library(fscaret)
+library(randomForest)
+library(e1071)
+
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "pml_train.csv")
+
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "pml_test.csv")
+
+training <- read.table("pml_train.csv", sep = ",", header = TRUE)
+testing <- read.table("pml_test.csv", sep = ",", header = TRUE)
+```
+
+# Split dataset 
+
+```{r}
+set.seed(666)
+
+inTrain <- createDataPartition(y=training$classe, p=0.7, list=F)
+train <- training[inTrain, ]
+valid <- training[-inTrain, ]
+```
+
+# Clean data 
+
+```{r}
+#removing near-zero variance predictors
+nzv <- nearZeroVar(training)
+train <- train[, -nzv]
+valid <- valid[, -nzv]
+#removing predictors with NA values
+train <- train[, colSums(is.na(train)) == 0]
+valid <- valid[, colSums(is.na(valid)) == 0]
+#removing columns unfit for prediction (ID, user_name, raw_timestamp_part_1 etc ...)
+train <- train[, -(1:5)]
+valid <- valid[, -(1:5)]
+```
+
+# Random Forest model
+
+```{r, chache =T}
+rfmod <- train(classe ~., method = "rf", data = train, verbose = TRUE, trControl = trainControl(method="cv"), number = 3)
+pred1 <- predict(rfmod, train)
+confusionMatrix(pred1, train$classe)
+
+# test on validation set before going on testing set
+pred2 <- predict(rfmod, valid)
+confusionMatrix(pred2, valid$classe)
+```
+
+# Apply model on Test dataset
+
+```{r}
+testing <- testing[, colSums(is.na(testing)) == 0]
+testing <- testing[, -(1:5)]
+nzvt <- nearZeroVar(testing)
+testing <- testing[, -nzvt]
+
+predTEST <- predict(mod1, testing)
+predTEST
+```
+
